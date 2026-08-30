@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CyberDiv — ESP32-DIV, ingegnerizzato per chi costruisce</title>
+<meta name="description" content="ESP32-DIV by CyberDiv: piattaforma multi-tool su ESP32-S3 con display TFT 2.8&quot;, slot microSD, LED di stato e antenna esterna. Esplora l'anatomia del dispositivo in 3D.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ===== Design tokens (from Engineered-for-Creators system) ===== */
+    --c-primary:#00F0FF;
+    --c-secondary:#FFFFFF;
+    --c-tertiary:#0A45FF;
+    --c-bg:#050607;
+    --c-surface:#0A0A0A;
+    --c-surface-2:#101113;
+    --c-text-1:#FFFFFF;
+    --c-text-2:#A3A3A3;
+    --c-text-3:#67686c;
+    --c-border:rgba(255,255,255,0.10);
+    --c-border-strong:rgba(255,255,255,0.18);
+
+    --f-display:'Inter',sans-serif;
+    --f-body:'Inter',sans-serif;
+    --f-mono:'JetBrains Mono',monospace;
+
+    --base:4.8px;
+    --gap:24px;
+    --card-pad:32px;
+    --section-pad:160px;
+
+    --r-sm:16px;
+    --r-md:23px;
+    --r-lg:24px;
+    --r-full:9999px;
+
+    --dur-fast:150ms;
+    --dur-slow:500ms;
+    --dur-slower:700ms;
+    --ease:cubic-bezier(0.4,0,0.2,1);
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--c-bg);
+    color:var(--c-text-1);
+    font-family:var(--f-body);
+    font-size:14px;
+    line-height:22.75px;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  img{max-width:100%; display:block;}
+  a{color:inherit; text-decoration:none;}
+  ul{list-style:none;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; scroll-behavior:auto !important;}
+  }
+
+  .wrap{max-width:1280px; margin:0 auto; padding-left:32px; padding-right:32px;}
+  @media (max-width:640px){ .wrap{padding-left:20px; padding-right:20px;} }
+
+  .eyebrow{
+    font-family:var(--f-mono);
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--c-primary);
+    display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:6px; height:6px; border-radius:50%;
+    background:var(--c-primary);
+    box-shadow:0 0 12px 2px var(--c-primary);
+  }
+
+  h1,h2,h3{font-family:var(--f-display); font-weight:600; letter-spacing:-0.025em; color:var(--c-text-1);}
+  .display-lg{font-size:clamp(40px,7vw,96px); line-height:1.02; font-weight:600;}
+  .display-md{font-size:clamp(30px,4.2vw,52px); line-height:1.06; font-weight:600;}
+  .label-md{font-family:var(--f-mono); font-size:12px; font-weight:600; line-height:16px; letter-spacing:0.04em;}
+  .body-lg{font-size:17px; line-height:1.6; color:var(--c-text-2); font-weight:400;}
+  .body-md{font-size:14px; line-height:22.75px; color:var(--c-text-2);}
+
+  /* ===== Buttons ===== */
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    font-family:var(--f-mono); font-size:12px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;
+    padding:16px 28px; border-radius:var(--r-full);
+    cursor:pointer; border:none; transition:transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+    white-space:nowrap;
+  }
+  .btn-primary{background:var(--c-secondary); color:#000;}
+  .btn-primary:hover{transform:translateY(-2px); box-shadow:0 8px 30px -6px rgba(0,240,255,0.35);}
+  .btn-link{background:transparent; color:var(--c-text-2); padding:16px 4px; border-radius:0;}
+  .btn-link:hover{color:var(--c-text-1);}
+  .btn-link .arrow{transition:transform var(--dur-fast) var(--ease);}
+  .btn-link:hover .arrow{transform:translateX(4px);}
+
+  /* ===== Glass / card recipe ===== */
+  .glass-shell{
+    position:relative; border-radius:var(--r-lg);
+    background:linear-gradient(180deg, rgba(255,255,255,0.12), rgba(0,0,0,0));
+    padding:1px;
+  }
+  .glass-inner{
+    border-radius:calc(var(--r-lg) - 1px);
+    background:var(--c-surface);
+    backdrop-filter:blur(12px);
+  }
+  .card{
+    background:var(--c-surface);
+    border:0.8px solid var(--c-border);
+    border-radius:var(--r-md);
+    padding:var(--card-pad);
+    backdrop-filter:blur(4px);
+    transition:border-color var(--dur-slow) var(--ease), transform var(--dur-slow) var(--ease);
+  }
+  .card:hover{border-color:var(--c-border-strong); transform:translateY(-4px);}
+
+  /* ===== Nav ===== */
+  header{
+    position:fixed; top:0; left:0; right:0; z-index:50;
+    padding:20px 0;
+  }
+  .nav-inner{
+    max-width:1280px; margin:0 auto; padding:0 32px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .nav-glass{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 12px 12px 20px;
+    border-radius:var(--r-full);
+    background:rgba(10,10,10,0.55);
+    border:0.8px solid var(--c-border);
+    backdrop-filter:blur(12px);
+    width:100%;
+  }
+  .logo{
+    font-family:var(--f-mono); font-weight:700; font-size:14px; letter-spacing:0.04em;
+    display:flex; align-items:center; gap:8px;
+  }
+  .logo .dot{width:8px; height:8px; border-radius:50%; background:var(--c-primary); box-shadow:0 0 10px 2px var(--c-primary);}
+  .logo span.sub{color:var(--c-text-3); font-weight:400; font-size:11px;}
+  nav.links{display:flex; align-items:center; gap:32px;}
+  nav.links a{
+    font-family:var(--f-mono); font-size:12px; color:var(--c-text-2);
+    letter-spacing:0.02em; transition:color var(--dur-fast) var(--ease);
+  }
+  nav.links a:hover{color:var(--c-text-1);}
+  @media (max-width:860px){ nav.links{display:none;} }
+
+  /* ===== Hero ===== */
+  #hero{
+    position:relative;
+    min-height:100vh;
+    display:flex; align-items:center;
+    padding-top:140px; padding-bottom:80px;
+    overflow:hidden;
+  }
+  #hero-bg{position:absolute; inset:0; z-index:0;}
+  #hero-bg canvas{display:block; width:100%; height:100%;}
+  #hero::after{
+    content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
+    background:radial-gradient(ellipse 80% 60% at 50% 30%, transparent 0%, var(--c-bg) 78%),
+               linear-gradient(180deg, transparent 0%, var(--c-bg) 100%);
+  }
+  .hero-content{position:relative; z-index:2; width:100%;}
+  .hero-grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:64px; align-items:center;}
+  @media (max-width:960px){ .hero-grid{grid-template-columns:1fr;} }
+
+  .hero-copy .eyebrow{margin-bottom:24px;}
+  .hero-copy h1{margin-bottom:24px;}
+  .hero-copy .body-lg{max-width:480px; margin-bottom:40px;}
+  .hero-actions{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+
+  .hero-stats{
+    display:flex; gap:40px; margin-top:56px; padding-top:32px; border-top:0.8px solid var(--c-border);
+    max-width:520px;
+  }
+  .hero-stat .num{font-family:var(--f-display); font-size:26px; font-weight:600; color:var(--c-text-1);}
+  .hero-stat .lbl{font-family:var(--f-mono); font-size:10px; color:var(--c-text-3); text-transform:uppercase; letter-spacing:0.1em; margin-top:6px;}
+
+  .hero-visual{position:relative;}
+  .hero-visual .glass-shell{padding:1px;}
+  .hero-visual img{
+    border-radius:calc(var(--r-lg) - 1px);
+    width:100%;
+    filter:drop-shadow(0 30px 60px rgba(0,0,0,0.6));
+  }
+  .hero-visual .tag{
+    position:absolute; top:24px; left:24px;
+    font-family:var(--f-mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase;
+    padding:8px 14px; border-radius:var(--r-full);
+    background:rgba(5,6,7,0.7); border:0.8px solid var(--c-border-strong);
+    color:var(--c-primary); backdrop-filter:blur(8px);
+  }
+
+  /* ===== Section shell ===== */
+  section{position:relative; padding:120px 0;}
+  .section-head{
+    display:flex; align-items:flex-end; justify-content:space-between; gap:40px;
+    margin-bottom:64px; flex-wrap:wrap;
+  }
+  .section-head .eyebrow{margin-bottom:16px;}
+  .section-head h2{max-width:640px;}
+  .section-head .body-md{max-width:360px;}
+  .divider{height:0.8px; background:var(--c-border); width:100%;}
+
+  /* ===== Dashboard / 3D Explode section ===== */
+  #dashboard{background:linear-gradient(180deg, transparent, rgba(10,69,255,0.04), transparent);}
+  .dash-grid{
+    display:grid; grid-template-columns:1.5fr 1fr; gap:var(--gap);
+  }
+  @media (max-width:960px){ .dash-grid{grid-template-columns:1fr;} }
+
+  .canvas-card{
+    position:relative;
+    aspect-ratio:4/3.1;
+    overflow:hidden;
+  }
+  .canvas-card .glass-inner{position:absolute; inset:0;}
+  #explode-canvas-wrap{position:absolute; inset:0; cursor:grab;}
+  #explode-canvas-wrap.grabbing{cursor:grabbing;}
+  #explode-canvas-wrap canvas{display:block; width:100%; height:100%; touch-action:none;}
+
+  .canvas-hint{
+    position:absolute; bottom:20px; left:20px; z-index:3;
+    font-family:var(--f-mono); font-size:10px; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--c-text-3); display:flex; align-items:center; gap:8px;
+    pointer-events:none;
+  }
+  .canvas-hint svg{width:14px; height:14px; opacity:0.6;}
+  .canvas-loading{
+    position:absolute; inset:0; z-index:4; display:flex; align-items:center; justify-content:center;
+    font-family:var(--f-mono); font-size:11px; color:var(--c-text-3); letter-spacing:0.08em; text-transform:uppercase;
+    background:var(--c-surface); transition:opacity var(--dur-slower) var(--ease);
+  }
+
+  .hotspot-label{
+    position:absolute; z-index:3; transform:translate(-50%,-50%);
+    display:flex; align-items:center; gap:6px;
+    padding:6px 10px 6px 8px; border-radius:var(--r-full);
+    background:rgba(5,6,7,0.75); border:0.8px solid var(--c-border-strong);
+    font-family:var(--f-mono); font-size:10px; letter-spacing:0.04em; color:var(--c-text-2);
+    backdrop-filter:blur(6px); pointer-events:none; white-space:nowrap;
+    opacity:0; transition:opacity var(--dur-fast) var(--ease);
+  }
+  .hotspot-label .pip{width:5px; height:5px; border-radius:50%; background:var(--c-text-3); transition:background var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);}
+  .hotspot-label.active{opacity:1; color:var(--c-text-1); border-color:var(--c-primary);}
+  .hotspot-label.active .pip{background:var(--c-primary); box-shadow:0 0 8px 2px var(--c-primary);}
+
+  .info-panel{display:flex; flex-direction:column; height:100%;}
+  .info-panel .card{flex:1; display:flex; flex-direction:column;}
+  .info-idx{font-family:var(--f-mono); font-size:11px; color:var(--c-primary); margin-bottom:16px;}
+  .info-title{font-size:22px; font-weight:600; margin-bottom:6px; min-height:28px;}
+  .info-sub{font-family:var(--f-mono); font-size:11px; color:var(--c-text-3); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:20px;}
+  .info-desc{color:var(--c-text-2); font-size:14px; line-height:1.7; flex:1;}
+  .info-empty{color:var(--c-text-3); font-style:normal;}
+
+  .chip-list{display:flex; flex-wrap:wrap; gap:8px; margin-top:24px;}
+  .chip{
+    font-family:var(--f-mono); font-size:11px; letter-spacing:0.02em;
+    padding:9px 14px; border-radius:var(--r-full);
+    border:0.8px solid var(--c-border); background:transparent; color:var(--c-text-2);
+    cursor:pointer; transition:all var(--dur-fast) var(--ease);
+  }
+  .chip:hover{border-color:var(--c-border-strong); color:var(--c-text-1);}
+  .chip.active{border-color:var(--c-primary); color:var(--c-primary); background:rgba(0,240,255,0.06);}
+
+  /* ===== Feature grid ===== */
+  .feature-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:var(--gap);
+  }
+  .feature-card .icon-slot{
+    width:44px; height:44px; border-radius:var(--r-sm);
+    border:0.8px solid var(--c-border); background:var(--c-surface-2);
+    display:flex; align-items:center; justify-content:center; margin-bottom:24px;
+    color:var(--c-primary);
+  }
+  .feature-card .icon-slot svg{width:20px; height:20px;}
+  .feature-card .f-num{font-family:var(--f-mono); font-size:10px; color:var(--c-text-3); letter-spacing:0.08em; margin-bottom:12px;}
+  .feature-card h3{font-size:17px; margin-bottom:10px;}
+  .feature-card p{color:var(--c-text-2); font-size:13.5px; line-height:1.65;}
+
+  /* ===== Specs ===== */
+  #specs{background:var(--c-surface);}
+  .specs-layout{display:grid; grid-template-columns:0.85fr 1.15fr; gap:80px; align-items:start;}
+  @media (max-width:960px){ .specs-layout{grid-template-columns:1fr; gap:48px;} }
+  .spec-row{
+    display:grid; grid-template-columns:180px 1fr; gap:24px;
+    padding:20px 0; border-bottom:0.8px solid var(--c-border);
+  }
+  .spec-row:first-child{border-top:0.8px solid var(--c-border);}
+  .spec-key{font-family:var(--f-mono); font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--c-text-3);}
+  .spec-val{font-size:14.5px; color:var(--c-text-1);}
+  .spec-val span{color:var(--c-text-2);}
+
+  /* ===== CTA ===== */
+  #cta{padding:140px 0;}
+  .cta-shell{padding:1px; border-radius:var(--r-lg);}
+  .cta-inner{
+    border-radius:calc(var(--r-lg) - 1px);
+    background:radial-gradient(120% 140% at 20% 0%, rgba(0,240,255,0.10), transparent 60%), var(--c-surface);
+    padding:80px 64px; text-align:center;
+  }
+  @media (max-width:640px){ .cta-inner{padding:56px 28px;} }
+  .cta-inner h2{margin-bottom:20px;}
+  .cta-inner .body-lg{max-width:520px; margin:0 auto 40px; }
+  .cta-actions{display:flex; justify-content:center; gap:8px; flex-wrap:wrap;}
+
+  /* ===== Footer ===== */
+  footer{padding:56px 0 40px; border-top:0.8px solid var(--c-border);}
+  .footer-grid{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:24px;}
+  .footer-links{display:flex; gap:28px; flex-wrap:wrap;}
+  .footer-links a{font-family:var(--f-mono); font-size:11px; color:var(--c-text-3); transition:color var(--dur-fast) var(--ease);}
+  .footer-links a:hover{color:var(--c-text-1);}
+  .footer-copy{font-family:var(--f-mono); font-size:11px; color:var(--c-text-3);}
+
+  /* ===== Reveal-on-scroll ===== */
+  .reveal{opacity:0; transform:translateY(28px);}
+
+  /* focus visibility */
+  a:focus-visible, button:focus-visible, .chip:focus-visible{
+    outline:1.5px solid var(--c-primary); outline-offset:3px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav-inner">
+    <div class="nav-glass">
+      <a href="#hero" class="logo"><span class="dot"></span>CYBERDIV<span class="sub">&nbsp;/ ESP32-DIV</span></a>
+      <nav class="links">
+        <a href="#dashboard">Anatomia 3D</a>
+        <a href="#features">Componenti</a>
+        <a href="#specs">Specifiche</a>
+        <a href="#cta">Acquista</a>
+      </nav>
+      <a href="#cta" class="btn btn-primary">Acquista ora</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ HERO ============ -->
+  <section id="hero">
+    <div id="hero-bg"></div>
+    <div class="wrap hero-content">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">ESP32-DIV · Piattaforma multi-tool</p>
+          <h1 class="display-lg">Progettato<br>per chi<br>costruisce.</h1>
+          <p class="body-lg">Un singolo dispositivo tascabile che unisce microcontrollore ESP32-S3, display TFT, storage e RF esterna. Costruito per chi prototipa, fa debug e sperimenta senza compromessi.</p>
+          <div class="hero-actions">
+            <a href="#dashboard" class="btn btn-primary">Esplora il modello 3D</a>
+            <a href="#specs" class="btn btn-link">Vedi le specifiche <span class="arrow">→</span></a>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat"><div class="num">10</div><div class="lbl">Moduli on-board</div></div>
+            <div class="hero-stat"><div class="num">2.8&Prime;</div><div class="lbl">Display TFT</div></div>
+            <div class="hero-stat"><div class="num">S3</div><div class="lbl">Chipset ESP32</div></div>
+          </div>
+        </div>
+        <div class="hero-visual reveal">
+          <div class="glass-shell">
+            <div class="glass-inner" style="padding:20px;">
+              <span class="tag">ESP32-DIV · Rev.03</span>
+              <img src="assets/esp32-div-board.png" alt="Scheda ESP32-DIV con quattro antenne esterne, display TFT 2.8 pollici e pulsanti tattili">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3D DASHBOARD ============ -->
+  <section id="dashboard">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div>
+          <p class="eyebrow">Anatomia del dispositivo</p>
+          <h2 class="display-md">Scomponi. Esplora.<br>Comprendi ogni componente.</h2>
+        </div>
+        <p class="body-md">Trascina per ruotare, scorri per zoomare e seleziona un elemento — sul modello o dall'elenco — per leggerne la funzione.</p>
+      </div>
+
+      <div class="dash-grid reveal">
+        <div class="canvas-card glass-shell">
+          <div class="glass-inner">
+            <div id="explode-canvas-wrap"></div>
+            <div class="canvas-loading" id="canvas-loading">Inizializzazione modello…</div>
+            <div class="canvas-hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3 5 7l4 4M15 3l4 4-4 4M5 7h14M9 21l-4-4 4-4m6 8 4-4-4-4M5 17h14"/></svg>
+              Trascina per ruotare · Clicca un componente
+            </div>
+          </div>
+        </div>
+
+        <div class="info-panel">
+          <div class="card">
+            <p class="info-idx" id="info-idx">00 / 10</p>
+            <h3 class="info-title" id="info-title">Nessun componente selezionato</h3>
+            <p class="info-sub" id="info-sub">In attesa di selezione</p>
+            <p class="info-desc" id="info-desc">Clicca su una parte del modello 3D, oppure scegli un componente dall'elenco qui sotto, per scoprire a cosa serve.</p>
+            <div class="chip-list" id="chip-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap"><div class="divider"></div></div>
+
+  <!-- ============ FEATURE GRID ============ -->
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div>
+          <p class="eyebrow">Bill of materials</p>
+          <h2 class="display-md">Ogni componente ha uno scopo preciso.</h2>
+        </div>
+        <p class="body-md">La scheda madre è pensata per stabilità e funzionalità core, senza elementi superflui.</p>
+      </div>
+      <div class="feature-grid" id="feature-grid"></div>
+    </div>
+  </section>
+
+  <!-- ============ SPECS ============ -->
+  <section id="specs">
+    <div class="wrap">
+      <div class="specs-layout">
+        <div class="reveal">
+          <p class="eyebrow">Specifiche tecniche</p>
+          <h2 class="display-md" style="margin-top:16px;">Costruito su fondamenta solide.</h2>
+          <p class="body-lg" style="margin-top:20px;">La revisione attuale risolve i conflitti di pin della generazione precedente e migliora il supporto USB nativo, lasciando margine per future espansioni hardware.</p>
+        </div>
+        <div class="reveal">
+          <div class="spec-row"><div class="spec-key">Microcontrollore</div><div class="spec-val">ESP32-S3 <span>— Wi-Fi + BLE, USB nativo</span></div></div>
+          <div class="spec-row"><div class="spec-key">Display</div><div class="spec-val">TFT ILI9341 <span>— 2.8&Prime;, interfaccia principale</span></div></div>
+          <div class="spec-row"><div class="spec-key">Storage</div><div class="spec-val">Slot microSD <span>— log, script, configurazioni</span></div></div>
+          <div class="spec-row"><div class="spec-key">Alimentazione</div><div class="spec-val">IP5306 <span>— ricarica e boost gestiti in hardware</span></div></div>
+          <div class="spec-row"><div class="spec-key">USB</div><div class="spec-val">CP2102 <span>— flashing e seriale</span></div></div>
+          <div class="spec-row"><div class="spec-key">RF</div><div class="spec-val">Connettore esterno <span>— antenne intercambiabili</span></div></div>
+          <div class="spec-row"><div class="spec-key">Feedback</div><div class="spec-val">4× WS2812 + buzzer <span>— stato visivo e acustico</span></div></div>
+          <div class="spec-row"><div class="spec-key">Input</div><div class="spec-val">Pulsanti tattili soft <span>— basso profilo, alta durata</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <section id="cta">
+    <div class="wrap">
+      <div class="cta-shell glass-shell reveal">
+        <div class="cta-inner">
+          <p class="eyebrow" style="justify-content:center;">Disponibile ora</p>
+          <h2 class="display-md" style="margin-top:16px;">Porta CyberDiv sul tuo banco di lavoro.</h2>
+          <p class="body-lg">Un unico dispositivo per prototipare, fare debug e sperimentare con RF, display e storage in un solo pacchetto.</p>
+          <div class="cta-actions">
+            <a href="#" class="btn btn-primary">Acquista ESP32-DIV</a>
+            <a href="#specs" class="btn btn-link">Rivedi le specifiche <span class="arrow">→</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap footer-grid">
+    <a href="#hero" class="logo"><span class="dot"></span>CYBERDIV</a>
+    <div class="footer-links">
+      <a href="#dashboard">Anatomia 3D</a>
+      <a href="#features">Componenti</a>
+      <a href="#specs">Specifiche</a>
+      <a href="#cta">Acquista</a>
+    </div>
+    <p class="footer-copy">© 2026 CyberDiv. Tutti i diritti riservati.</p>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ============================================================
+     COMPONENT DATA — single source of truth for hotspots, chips,
+     feature cards and info panel.
+     ============================================================ */
+  var COMPONENTS = [
+    {
+      id:"mcu", name:"ESP32-S3", sub:"Microcontrollore principale",
+      desc:"Il cuore del sistema. Risolve i conflitti di pin della generazione precedente, migliora il supporto USB nativo e lascia margine per future espansioni.",
+      pos:[0.28,0.62,-0.52], height:1.05, size:[0.30,0.10,0.30], color:0x1a1c1f,
+      icon:'<path d="M4 4h16v16H4z"/><path d="M9 9h6v6H9z"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>'
+    },
+    {
+      id:"pmic", name:"IP5306", sub:"Gestione alimentazione",
+      desc:"Il chip di power management. Gestisce la ricarica della batteria e la conversione boost, garantendo un funzionamento stabile anche sotto carico.",
+      pos:[-0.62,0.52,0.58], height:0.85, size:[0.20,0.09,0.20], color:0x1a1c1f,
+      icon:'<path d="M13 2 3 14h8l-1 8 10-12h-8l1-8z"/>'
+    },
+    {
+      id:"vdiv", name:"Partitore di tensione", sub:"Monitoraggio batteria",
+      desc:"Monitora costantemente la tensione della batteria, fornendo al firmware una lettura precisa e affidabile dello stato di carica.",
+      pos:[-0.72,0.40,0.28], height:0.65, size:[0.12,0.06,0.16], color:0x22181a,
+      icon:'<path d="M3 12h4l2-7 4 14 2-7h6"/>'
+    },
+    {
+      id:"usb", name:"CP2102", sub:"Convertitore USB-seriale",
+      desc:"Gestisce il flashing del firmware e la comunicazione seriale con il computer, per un'interazione affidabile via USB.",
+      pos:[0.62,0.58,0.62], height:0.92, size:[0.18,0.09,0.18], color:0x1a1c1f,
+      icon:'<path d="M12 2v8m0 0-3-3m3 3 3-3M6 12v4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4"/><path d="M9 20h6"/>'
+    },
+    {
+      id:"sd", name:"Slot microSD", sub:"Storage esterno",
+      desc:"Spazio di archiviazione per log, script e configurazioni: per progetti che vanno oltre la memoria interna del microcontrollore.",
+      pos:[-0.76,0.36,-0.10], height:0.55, size:[0.14,0.05,0.28], color:0x123322,
+      icon:'<path d="M7 2h8l3 3v17H7z"/><path d="M9 2v5h6V2"/>'
+    },
+    {
+      id:"display", name:"Display TFT 2.8\u2033 · ILI9341", sub:"Interfaccia principale",
+      desc:"L'interfaccia visiva del dispositivo: schermo TFT da 2.8 pollici per la navigazione dei menu e la visualizzazione dei dati in tempo reale.",
+      pos:[0.0,0.98,-0.02], height:1.65, size:[0.62,0.06,0.86], color:0x0c0d0e,
+      icon:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 21h6"/>'
+    },
+    {
+      id:"buttons", name:"Pulsanti tattili", sub:"Input utente",
+      desc:"Micro-switch soft a basso profilo pensati per un input affidabile e una lunga durata nel tempo, anche con uso intensivo.",
+      pos:[0.02,0.30,0.86], height:0.42, size:[0.34,0.07,0.30], color:0x1a1c1f,
+      icon:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/>'
+    },
+    {
+      id:"buzzer", name:"Buzzer", sub:"Feedback acustico",
+      desc:"Fornisce un feedback acustico opzionale per notifiche, conferme e allarmi, senza dipendere dallo schermo.",
+      pos:[0.42,0.44,0.88], height:0.58, size:[0.14,0.10,0.14], color:0x1a1c1f,
+      icon:'<path d="M9 8v8H5l-2 3V5l2 3z" fill="none"/><path d="M9 8v8H5l-2 3V5l2 3z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/>'
+    },
+    {
+      id:"neopixel", name:"WS2812 NeoPixel ×4", sub:"Indicatori RGB",
+      desc:"Quattro LED indirizzabili che comunicano lo stato del sistema attraverso codici colore personalizzabili.",
+      pos:[0.0,0.36,-0.88], height:0.40, size:[0.46,0.05,0.08], color:0x1a1c1f,
+      icon:'<circle cx="6" cy="12" r="2.4"/><circle cx="12" cy="12" r="2.4"/><circle cx="18" cy="12" r="2.4"/>'
+    },
+    {
+      id:"antenna", name:"Connettore antenna esterna", sub:"RF ×4",
+      desc:"Predisposizione per antenne intercambiabili, per configurazioni RF flessibili e portata estesa in ogni scenario d'uso.",
+      pos:[0.0,1.55,-0.95], height:2.35, size:[0.50,0.05,0.05], color:0x1a1c1f, isAntenna:true,
+      icon:'<path d="M12 2v13M12 15a5 5 0 0 1-5-5M12 15a5 5 0 0 0 5-5M12 15a9 9 0 0 1-9-9M12 15a9 9 0 0 0 9-9"/><circle cx="12" cy="20" r="1.6"/>'
+    }
+  ];
+
+  /* ============================================================
+     CHIP LIST + FEATURE GRID (data-driven)
+     ============================================================ */
+  var chipListEl = document.getElementById('chip-list');
+  var featureGridEl = document.getElementById('feature-grid');
+
+  COMPONENTS.forEach(function(c, i){
+    var chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.type = 'button';
+    chip.textContent = c.name;
+    chip.setAttribute('data-idx', i);
+    chip.addEventListener('click', function(){ selectComponent(i, true); });
+    chipListEl.appendChild(chip);
+
+    var card = document.createElement('div');
+    card.className = 'card feature-card';
+    card.innerHTML =
+      '<div class="f-num">'+ String(i+1).padStart(2,'0') +' / 10</div>'+
+      '<div class="icon-slot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+ c.icon +'</svg></div>'+
+      '<h3>'+ c.name +'</h3><p>'+ c.desc +'</p>';
+    featureGridEl.appendChild(card);
+  });
+
+  /* ============================================================
+     INFO PANEL
+     ============================================================ */
+  var infoIdx = document.getElementById('info-idx');
+  var infoTitle = document.getElementById('info-title');
+  var infoSub = document.getElementById('info-sub');
+  var infoDesc = document.getElementById('info-desc');
+  var chips = chipListEl.querySelectorAll('.chip');
+  var currentSelection = -1;
+
+  function updatePanel(i){
+    var c = COMPONENTS[i];
+    infoIdx.textContent = String(i+1).padStart(2,'0') + ' / 10';
+    infoTitle.textContent = c.name;
+    infoSub.textContent = c.sub;
+    infoDesc.textContent = c.desc;
+    chips.forEach(function(ch, ci){ ch.classList.toggle('active', ci === i); });
+  }
+
+  /* ============================================================
+     THREE.JS — HERO PARTICLE FIELD (dot-matrix, breathing pulse)
+     ============================================================ */
+  (function initHeroField(){
+    var container = document.getElementById('hero-bg');
+    if (!container || !window.THREE) return;
+
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(0, 0, 18);
+
+    var renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+
+    var COLS = 46, ROWS = 30;
+    var positions = new Float32Array(COLS * ROWS * 3);
+    var idx = 0;
+    for (var y = 0; y < ROWS; y++){
+      for (var x = 0; x < COLS; x++){
+        positions[idx++] = (x - COLS/2) * 0.62;
+        positions[idx++] = (y - ROWS/2) * 0.62;
+        positions[idx++] = (Math.random()-0.5) * 1.2;
+      }
+    }
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    var mat = new THREE.PointsMaterial({
+      color:0x00F0FF, size:0.05, transparent:true, opacity:0.55,
+      blending:THREE.AdditiveBlending, depthWrite:false
+    });
+    var points = new THREE.Points(geo, mat);
+    scene.add(points);
+
+    var mouse = {x:0, y:0};
+    window.addEventListener('mousemove', function(e){
+      mouse.x = (e.clientX / window.innerWidth - 0.5);
+      mouse.y = (e.clientY / window.innerHeight - 0.5);
+    });
+
+    var clock = new THREE.Clock();
+    function animate(){
+      requestAnimationFrame(animate);
+      var t = clock.getElapsedTime();
+      if (!reduceMotion){
+        mat.opacity = 0.42 + Math.sin(t * 0.5) * 0.12;
+        points.rotation.z = t * 0.01;
+        points.position.x += (mouse.x * 1.4 - points.position.x) * 0.02;
+        points.position.y += (-mouse.y * 1.0 - points.position.y) * 0.02;
+      }
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', function(){
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+  })();
+
+  /* ============================================================
+     THREE.JS — INTERACTIVE EXPLODED BOARD
+     ============================================================ */
+  (function initExplode(){
+    var wrap = document.getElementById('explode-canvas-wrap');
+    var loading = document.getElementById('canvas-loading');
+    if (!wrap || !window.THREE) return;
+
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(42, wrap.clientWidth / wrap.clientHeight, 0.1, 100);
+
+    var renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+    wrap.appendChild(renderer.domElement);
+
+    // Lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    var key = new THREE.SpotLight(0xffffff, 1.1);
+    key.position.set(4, 6, 5);
+    scene.add(key);
+    var rim = new THREE.SpotLight(0x00F0FF, 0.8);
+    rim.position.set(-5, 3, -4);
+    scene.add(rim);
+    var fill = new THREE.PointLight(0x0A45FF, 0.5);
+    fill.position.set(0, -2, 3);
+    scene.add(fill);
+
+    var rig = new THREE.Group();
+    scene.add(rig);
+
+    // Base PCB
+    var pcbGeo = new THREE.BoxGeometry(1.35, 0.05, 2.05);
+    var pcbMat = new THREE.MeshStandardMaterial({ color:0x0b1f16, metalness:0.35, roughness:0.55 });
+    var pcb = new THREE.Mesh(pcbGeo, pcbMat);
+    pcb.position.set(0, 0, 0);
+    rig.add(pcb);
+
+    var edgeGeo = new THREE.EdgesGeometry(pcbGeo);
+    var edgeMat = new THREE.LineBasicMaterial({ color:0x00F0FF, transparent:true, opacity:0.35 });
+    rig.add(new THREE.LineSegments(edgeGeo, edgeMat));
+
+    var interactive = [];
+    var leaderLines = [];
+    var floatMeshes = [];
+
+    COMPONENTS.forEach(function(c, i){
+      var geo;
+      if (c.isAntenna){
+        geo = new THREE.CylinderGeometry(0.028, 0.045, c.size[0], 10);
+      } else {
+        geo = new THREE.BoxGeometry(c.size[0], c.size[1], c.size[2]);
+      }
+      var baseColor = c.color !== undefined ? c.color : 0x1a1c1f;
+      var mat = new THREE.MeshStandardMaterial({
+        color:baseColor, metalness:0.4, roughness:0.45,
+        emissive:0x000000, emissiveIntensity:0.6
+      });
+      var mesh = new THREE.Mesh(geo, mat);
+
+      var groundPos = new THREE.Vector3(c.pos[0], 0.03, c.pos[2]);
+      var floatPos = new THREE.Vector3(c.pos[0], c.height, c.pos[2]);
+      if (c.isAntenna) mesh.rotation.x = 0; // vertical cylinder default orientation already up axis Y -> rotate to stand along Y using geometry default (cylinder axis = Y) fine.
+
+      mesh.position.copy(floatPos);
+      mesh.userData = { index:i, baseColor:baseColor, floatPos:floatPos, phase:Math.random()*Math.PI*2 };
+      rig.add(mesh);
+      interactive.push(mesh);
+      floatMeshes.push(mesh);
+
+      // leader line from ground anchor to component
+      var lineGeo = new THREE.BufferGeometry().setFromPoints([groundPos, floatPos]);
+      var lineMat = new THREE.LineDashedMaterial({ color:0x3a3d42, dashSize:0.035, gapSize:0.03, transparent:true, opacity:0.7 });
+      var line = new THREE.Line(lineGeo, lineMat);
+      line.computeLineDistances();
+      rig.add(line);
+      leaderLines.push(line);
+
+      // anchor pip on the board
+      var pipGeo = new THREE.CircleGeometry(0.02, 16);
+      var pipMat = new THREE.MeshBasicMaterial({ color:0x00F0FF, transparent:true, opacity:0.7 });
+      var pip = new THREE.Mesh(pipGeo, pipMat);
+      pip.rotation.x = -Math.PI/2;
+      pip.position.set(groundPos.x, 0.032, groundPos.z);
+      rig.add(pip);
+    });
+
+    rig.rotation.x = -0.15;
+
+    // ---- Spherical camera rig (custom lightweight orbit) ----
+    var radius = 4.4, minR = 2.6, maxR = 7.5;
+    var theta = 0.78, phi = 1.05; // azimuth, polar
+    function updateCamera(){
+      camera.position.x = radius * Math.sin(phi) * Math.sin(theta);
+      camera.position.y = radius * Math.cos(phi);
+      camera.position.z = radius * Math.sin(phi) * Math.cos(theta);
+      camera.lookAt(0, 0.55, 0);
+    }
+    updateCamera();
+
+    var dragging = false, lastX = 0, lastY = 0, autoRotate = true;
+    wrap.addEventListener('pointerdown', function(e){
+      dragging = true; autoRotate = false; wrap.classList.add('grabbing');
+      lastX = e.clientX; lastY = e.clientY;
+      wrap.setPointerCapture(e.pointerId);
+    });
+    wrap.addEventListener('pointerup', function(e){
+      dragging = false; wrap.classList.remove('grabbing');
+      handleTap(e);
+    });
+    wrap.addEventListener('pointercancel', function(){ dragging = false; wrap.classList.remove('grabbing'); });
+    wrap.addEventListener('pointermove', function(e){
+      if (!dragging) return;
+      var dx = e.clientX - lastX, dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      theta -= dx * 0.006;
+      phi -= dy * 0.006;
+      phi = Math.max(0.35, Math.min(1.45, phi));
+      updateCamera();
+    });
+    wrap.addEventListener('wheel', function(e){
+      e.preventDefault();
+      radius += e.deltaY * 0.0025;
+      radius = Math.max(minR, Math.min(maxR, radius));
+      updateCamera();
+    }, { passive:false });
+
+    // ---- Selection / raycasting ----
+    var raycaster = new THREE.Raycaster();
+    var pointerNDC = new THREE.Vector2();
+    var dragStart = {x:0,y:0};
+    wrap.addEventListener('pointerdown', function(e){ dragStart.x = e.clientX; dragStart.y = e.clientY; });
+
+    function handleTap(e){
+      var moved = Math.hypot(e.clientX - dragStart.x, e.clientY - dragStart.y);
+      if (moved > 6) return; // treat as drag, not a click
+      var rect = renderer.domElement.getBoundingClientRect();
+      pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointerNDC, camera);
+      var hits = raycaster.intersectObjects(interactive);
+      if (hits.length){
+        selectComponent(hits[0].object.userData.index, false);
+      }
+    }
+
+    function setSelectedMesh(i){
+      interactive.forEach(function(mesh, mi){
+        var isSel = mi === i;
+        mesh.material.emissive.setHex(isSel ? 0x00F0FF : 0x000000);
+        mesh.material.emissiveIntensity = isSel ? 0.9 : 0.0;
+        leaderLines[mi].material.color.setHex(isSel ? 0x00F0FF : 0x3a3d42);
+        leaderLines[mi].material.opacity = isSel ? 1 : 0.55;
+      });
+    }
+    window.__setExplodeSelection = setSelectedMesh;
+
+    // ---- animation loop ----
+    var clock = new THREE.Clock();
+    function animate(){
+      requestAnimationFrame(animate);
+      var t = clock.getElapsedTime();
+      if (autoRotate && !dragging && !reduceMotion){
+        theta += 0.0016;
+        updateCamera();
+      }
+      if (!reduceMotion){
+        floatMeshes.forEach(function(mesh){
+          var bob = Math.sin(t * 0.9 + mesh.userData.phase) * 0.012;
+          mesh.position.y = mesh.userData.floatPos.y + bob;
+        });
+        leaderLines.forEach(function(line, i){
+          var mesh = floatMeshes[i];
+          var pos = line.geometry.attributes.position.array;
+          pos[4] = mesh.position.y; // update top-of-line Y to follow bob
+          line.geometry.attributes.position.needsUpdate = true;
+        });
+      }
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    function resize(){
+      var w = wrap.clientWidth, h = wrap.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+    window.addEventListener('resize', resize);
+
+    if (loading){
+      setTimeout(function(){
+        loading.style.opacity = '0';
+        setTimeout(function(){ loading.style.display = 'none'; }, 400);
+      }, 250);
+    }
+  })();
+
+  /* ============================================================
+     GLOBAL SELECTION BRIDGE (panel + chips + 3D)
+     ============================================================ */
+  window.selectComponent = function(i, fromChip){
+    currentSelection = i;
+    updatePanel(i);
+    if (window.__setExplodeSelection) window.__setExplodeSelection(i);
+  };
+  function selectComponent(i, fromChip){ window.selectComponent(i, fromChip); }
+
+  /* ============================================================
+     SCROLL REVEALS
+     ============================================================ */
+  if (window.gsap && window.ScrollTrigger){
+    gsap.registerPlugin(ScrollTrigger);
+    document.querySelectorAll('.reveal').forEach(function(el){
+      gsap.to(el, {
+        opacity:1, y:0, duration:0.7, ease:"power2.out",
+        scrollTrigger:{ trigger:el, start:"top 85%" }
+      });
+    });
+  } else {
+    document.querySelectorAll('.reveal').forEach(function(el){
+      el.style.opacity = 1; el.style.transform = 'none';
+    });
+  }
+})();
+</script>
+</body>
+</html>
