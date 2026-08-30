@@ -248,7 +248,7 @@
   }
   .canvas-legend .swatch{width:9px; height:9px; border-radius:50%; flex:none;}
   .canvas-legend .swatch.solid{background:var(--c-primary); box-shadow:0 0 6px 1px var(--c-primary);}
-  .canvas-legend .swatch.ghost{border:1.2px dashed var(--c-primary); opacity:0.7;}
+  .canvas-legend .swatch.ref{background:var(--c-tertiary); box-shadow:0 0 6px 1px var(--c-tertiary);}
   @media (max-width:640px){ .canvas-legend{display:none;} }
   .canvas-loading{
     position:absolute; inset:0; z-index:4; display:flex; align-items:center; justify-content:center;
@@ -417,8 +417,8 @@
               Trascina per ruotare · Clicca un componente
             </div>
             <div class="canvas-legend">
-              <span class="item"><span class="swatch solid"></span>Visibile in foto</span>
-              <span class="item"><span class="swatch ghost"></span>Interno alla scheda</span>
+              <span class="item"><span class="swatch solid"></span>Dalla foto del dispositivo</span>
+              <span class="item"><span class="swatch ref"></span>Foto di riferimento modulo</span>
             </div>
           </div>
         </div>
@@ -527,26 +527,26 @@
   var COMPONENTS = [
     {
       id:"mcu", name:"ESP32-S3", sub:"Microcontrollore principale",
-      desc:"Il cuore del sistema. Risolve i conflitti di pin della generazione precedente, migliora il supporto USB nativo e lascia margine per future espansioni. Si trova sotto lo schermo, non visibile dall'alto.",
-      visible:false, anchor:[350,405], size:[0.15,0.15], height:1.05,
+      desc:"Il cuore del sistema. Risolve i conflitti di pin della generazione precedente, migliora il supporto USB nativo e lascia margine per future espansioni. Sulla scheda è un modulo WROOM saldato SMD, non visibile dall'alto in questa foto — qui una foto di riferimento del modulo.",
+      visible:false, anchor:[350,405], img:"assets/components/esp32.webp", targetSize:0.40, size:[0.15,0.15], height:1.05,
       icon:'<path d="M4 4h16v16H4z"/><path d="M9 9h6v6H9z"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/>'
     },
     {
       id:"pmic", name:"IP5306", sub:"Gestione alimentazione",
-      desc:"Il chip di power management. Gestisce la ricarica della batteria e la conversione boost, garantendo un funzionamento stabile anche sotto carico. Montato sul retro della scheda.",
-      visible:false, anchor:[220,520], size:[0.13,0.13], height:0.82,
+      desc:"Il chip di power management. Gestisce la ricarica della batteria e la conversione boost, garantendo un funzionamento stabile anche sotto carico. Sulla scheda è integrato come chip SMD — qui una foto di riferimento del modulo IP5306.",
+      visible:false, anchor:[220,520], img:"assets/components/ip5306.jpeg", targetSize:0.30, size:[0.13,0.13], height:0.82,
       icon:'<path d="M13 2 3 14h8l-1 8 10-12h-8l1-8z"/>'
     },
     {
       id:"vdiv", name:"Partitore di tensione", sub:"Monitoraggio batteria",
-      desc:"Monitora costantemente la tensione della batteria, fornendo al firmware una lettura precisa e affidabile dello stato di carica. Componente lato retro.",
-      visible:false, anchor:[220,650], size:[0.11,0.15], height:0.60,
+      desc:"Monitora costantemente la tensione della batteria, fornendo al firmware una lettura precisa e affidabile dello stato di carica. Foto di riferimento del modulo sensore di tensione.",
+      visible:false, anchor:[220,650], img:"assets/components/partitore_di_tensione.jpg", targetSize:0.30, size:[0.11,0.15], height:0.60,
       icon:'<path d="M3 12h4l2-7 4 14 2-7h6"/>'
     },
     {
       id:"usb", name:"CP2102", sub:"Convertitore USB-seriale",
-      desc:"Gestisce il flashing del firmware e la comunicazione seriale con il computer, per un'interazione affidabile via USB. Vicino al bordo, lato connettore.",
-      visible:false, anchor:[465,895], size:[0.14,0.14], height:0.90,
+      desc:"Gestisce il flashing del firmware e la comunicazione seriale con il computer, per un'interazione affidabile via USB. Foto di riferimento del modulo CP2102.",
+      visible:false, anchor:[465,895], img:"assets/components/cp2102.jpg", targetSize:0.32, size:[0.14,0.14], height:0.90,
       icon:'<path d="M12 2v8m0 0-3-3m3 3 3-3M6 12v4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4"/><path d="M9 20h6"/>'
     },
     {
@@ -575,8 +575,8 @@
     },
     {
       id:"neopixel", name:"WS2812 NeoPixel ×4", sub:"Indicatori RGB",
-      desc:"Quattro LED indirizzabili che comunicano lo stato del sistema attraverso codici colore personalizzabili. Posizionati sul bordo superiore, sotto al rivestimento.",
-      visible:false, anchor:[280,402], size:[0.30,0.06], height:0.50,
+      desc:"Quattro LED indirizzabili che comunicano lo stato del sistema attraverso codici colore personalizzabili. Foto di riferimento di una strip WS2812 — sulla scheda sono 4 LED SMD lungo il bordo superiore.",
+      visible:false, anchor:[280,402], img:"assets/components/ws2812.jpg", targetSize:0.46, size:[0.30,0.06], height:0.50,
       icon:'<circle cx="6" cy="12" r="2.4"/><circle cx="12" cy="12" r="2.4"/><circle cx="18" cy="12" r="2.4"/>'
     },
     {
@@ -768,21 +768,28 @@
     var GHOST_COLOR = 0x00F0FF;
     var DARK_EDGE = 0x1a1c1f;
 
-    function buildComponents(baseTexture){
-      // "keyed" texture: original pixels, transparent background — source for the
-      // photo-real floating chips (cropped via offset/repeat per component).
-      var keyedCanvas = document.createElement('canvas');
-      keyedCanvas.width = IMG_W; keyedCanvas.height = IMG_H;
-      var kctx = keyedCanvas.getContext('2d');
-      kctx.drawImage(baseTexture.image, 0, 0, IMG_W, IMG_H);
-      var imgData = kctx.getImageData(0, 0, IMG_W, IMG_H);
-      var d = imgData.data;
+    function keyWhiteToAlpha(imgEl){
+      var w = imgEl.naturalWidth || imgEl.width, h = imgEl.naturalHeight || imgEl.height;
+      var c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      var ctx = c.getContext('2d');
+      ctx.drawImage(imgEl, 0, 0, w, h);
+      var data = ctx.getImageData(0, 0, w, h);
+      var d = data.data;
       for (var p = 0; p < d.length; p += 4){
         var lum = (d[p] + d[p+1] + d[p+2]) / 3;
         if (lum >= 248){ d[p+3] = 0; }
         else if (lum > 195){ d[p+3] = Math.round(255 * (248 - lum) / (248 - 195)); }
       }
-      kctx.putImageData(imgData, 0, 0);
+      ctx.putImageData(data, 0, 0);
+      return { canvas:c, w:w, h:h };
+    }
+
+    function buildComponents(baseTexture, compTexMap){
+      // "keyed" canvas: main board photo, transparent background — source for the
+      // photo-real floating chips cropped straight from it (offset/repeat per part).
+      var keyed = keyWhiteToAlpha(baseTexture.image);
+      var keyedCanvas = keyed.canvas;
       var texKeyed = new THREE.CanvasTexture(keyedCanvas);
       texKeyed.wrapS = texKeyed.wrapT = THREE.ClampToEdgeWrapping;
 
@@ -791,7 +798,7 @@
       var boardCanvas = document.createElement('canvas');
       boardCanvas.width = IMG_W; boardCanvas.height = IMG_H;
       var bctx = boardCanvas.getContext('2d');
-      bctx.drawImage(keyedCanvas, 0, 0);
+      bctx.drawImage(keyedCanvas, 0, 0, IMG_W, IMG_H);
       bctx.fillStyle = 'rgba(0,0,0,0.62)';
       COMPONENTS.forEach(function(c){
         if (!c.visible) return;
@@ -811,33 +818,55 @@
       boardMesh.rotation.x = -Math.PI / 2;
       rig.add(boardMesh);
 
+      // pre-key each standalone component reference photo once
+      var keyedComponents = {};
+      Object.keys(compTexMap).forEach(function(id){
+        var tex = compTexMap[id];
+        if (tex) keyedComponents[id] = keyWhiteToAlpha(tex.image);
+      });
+
       // ---- per-component meshes ----
       COMPONENTS.forEach(function(c, i){
-        var w = c.worldW, dep = c.worldD;
-        var thickness = 0.05;
-        var geo = new THREE.BoxGeometry(w, thickness, dep);
         var mesh;
+        var hasCrop = !!c.visible;
+        var hasOwnPhoto = !hasCrop && keyedComponents[c.id];
 
-        if (c.visible){
+        if (hasCrop){
+          var w = c.worldW, dep = c.worldD;
+          var geo = new THREE.BoxGeometry(w, 0.05, dep);
           var tex = texKeyed.clone();
           tex.image = keyedCanvas;
           tex.needsUpdate = true;
           tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
           tex.offset.set(c.rect[0] / IMG_W, 1 - c.rect[3] / IMG_H);
           tex.repeat.set((c.rect[2]-c.rect[0]) / IMG_W, (c.rect[3]-c.rect[1]) / IMG_H);
-
           var topMat = new THREE.MeshStandardMaterial({ map:tex, transparent:false, alphaTest:0.35, roughness:0.5, metalness:0.08 });
           var sideMat = new THREE.MeshStandardMaterial({ color:DARK_EDGE, metalness:0.4, roughness:0.5, emissive:0x000000 });
-          // Box face order: +x,-x,+y,-y,+z,-z — top face (+y) gets the photo crop.
           mesh = new THREE.Mesh(geo, [sideMat, sideMat, topMat, sideMat, sideMat, sideMat]);
+        } else if (hasOwnPhoto){
+          var kc = keyedComponents[c.id];
+          var aspect = kc.w / kc.h;
+          var target = c.targetSize || 0.3;
+          var pw = aspect >= 1 ? target : target * aspect;
+          var pd = aspect >= 1 ? target / aspect : target;
+          c.worldW = pw; c.worldD = pd;
+          var geo2 = new THREE.BoxGeometry(pw, 0.05, pd);
+          var tex2 = new THREE.CanvasTexture(kc.canvas);
+          tex2.wrapS = tex2.wrapT = THREE.ClampToEdgeWrapping;
+          var topMat2 = new THREE.MeshStandardMaterial({ map:tex2, transparent:false, alphaTest:0.35, roughness:0.5, metalness:0.08 });
+          var sideMat2 = new THREE.MeshStandardMaterial({ color:DARK_EDGE, metalness:0.4, roughness:0.5, emissive:0x000000 });
+          mesh = new THREE.Mesh(geo2, [sideMat2, sideMat2, topMat2, sideMat2, sideMat2, sideMat2]);
         } else {
+          // fallback: reference photo failed to load — holographic ghost marker
+          c.worldW = c.size[0]; c.worldD = c.size[1];
+          var geo3 = new THREE.BoxGeometry(c.size[0], 0.05, c.size[1]);
           var ghostMat = new THREE.MeshStandardMaterial({
             color:GHOST_COLOR, transparent:true, opacity:0.10,
             emissive:0x000000, emissiveIntensity:0.0, metalness:0.1, roughness:0.4, depthWrite:false
           });
-          mesh = new THREE.Mesh(geo, ghostMat);
+          mesh = new THREE.Mesh(geo3, ghostMat);
           var edges = new THREE.LineSegments(
-            new THREE.EdgesGeometry(geo),
+            new THREE.EdgesGeometry(geo3),
             new THREE.LineBasicMaterial({ color:GHOST_COLOR, transparent:true, opacity:0.55 })
           );
           mesh.add(edges);
@@ -847,7 +876,7 @@
         var groundPos = new THREE.Vector3(c.worldX, 0.03, c.worldZ);
         var floatPos = new THREE.Vector3(c.worldX, c.height, c.worldZ);
         mesh.position.copy(floatPos);
-        mesh.userData = { index:i, floatPos:floatPos, phase:Math.random()*Math.PI*2, visible:c.visible };
+        mesh.userData = { index:i, floatPos:floatPos, phase:Math.random()*Math.PI*2 };
         rig.add(mesh);
         interactive.push(mesh);
         floatMeshes.push(mesh);
@@ -937,8 +966,8 @@
     function setSelectedMesh(i){
       interactive.forEach(function(mesh, mi){
         var isSel = mi === i;
-        if (mesh.userData.visible){
-          var topMat = mesh.material[2]; // top face material carries the photo crop
+        if (Array.isArray(mesh.material)){
+          var topMat = mesh.material[2]; // top face material carries the photo
           topMat.emissive.setHex(isSel ? 0x00F0FF : 0x000000);
           topMat.emissiveIntensity = isSel ? 0.8 : 0.0;
         } else {
@@ -986,17 +1015,30 @@
     }
     window.addEventListener('resize', resize);
 
-    new THREE.TextureLoader().load(
-      'assets/esp32-div-board.png',
-      function(texture){ buildComponents(texture); },
-      undefined,
-      function(){
-        // Photo failed to load (e.g. opened as a bare file:// without the assets
-        // folder alongside it) — fail quietly, keep the loading label visible
-        // rather than showing a broken scene.
-        if (loading) loading.textContent = 'Immagine non trovata — verifica assets/esp32-div-board.png';
+    function loadTex(url){
+      return new Promise(function(resolve){
+        if (!url){ resolve(null); return; }
+        new THREE.TextureLoader().load(url, resolve, undefined, function(){ resolve(null); });
+      });
+    }
+
+    var boardPromise = loadTex('assets/esp32-div-board.png');
+    var compIds = COMPONENTS.filter(function(c){ return c.img; }).map(function(c){ return c.id; });
+    var compPromises = compIds.map(function(id){
+      var c = COMPONENTS.filter(function(x){ return x.id === id; })[0];
+      return loadTex(c.img);
+    });
+
+    Promise.all([boardPromise].concat(compPromises)).then(function(results){
+      var boardTex = results[0];
+      if (!boardTex){
+        if (loading) loading.textContent = 'Foto scheda non trovata — verifica assets/esp32-div-board.png';
+        return;
       }
-    );
+      var compTexMap = {};
+      compIds.forEach(function(id, idx){ compTexMap[id] = results[1 + idx]; });
+      buildComponents(boardTex, compTexMap);
+    });
   })();
 
   /* ============================================================
